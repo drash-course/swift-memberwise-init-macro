@@ -47,16 +47,37 @@ public struct MemberwiseInitMacro: MemberMacro {
     )
     diagnostics.forEach { context.diagnose($0) }
 
-    return [
-      DeclSyntax(
-        MemberwiseInitFormatter.formatInitializer(
-          properties: properties,
-          accessLevel: accessLevel,
-          deunderscoreParameters: deunderscoreParameters,
-          optionalsDefaultNil: optionalsDefaultNil
+    var memberwiseInitDecl = MemberwiseInitFormatter.formatInitializer(
+      properties: properties,
+      accessLevel: accessLevel,
+      deunderscoreParameters: deunderscoreParameters,
+      optionalsDefaultNil: optionalsDefaultNil
+    )
+
+    if let classDecl = decl.as(ClassDeclSyntax.self),
+       let superclass = classDecl.inheritanceClause?.inheritedTypes.first
+    {
+      let superclassName = superclass.type.trimmedDescription
+      if superclass.type.trimmedDescription.hasSuffix("ViewController") {
+        // the superclass is a viewcontroller, we need to add a call to the designated initializer
+        let superInitStmt: StmtSyntax = "\nsuper.init(nibName: nil, bundle: nil)"
+        memberwiseInitDecl.body?.statements.append(
+          CodeBlockItemSyntax(item: .stmt(superInitStmt))
         )
-      )
-    ]
+
+        // we also need to add the required initializer
+        let requiredInitDecl: DeclSyntax = """
+          @available(*, unavailable)
+          required init?(coder: NSCoder) {
+              fatalError("init(coder:) has not been implemented")
+          }
+          """
+
+        return [DeclSyntax(memberwiseInitDecl), requiredInitDecl]
+      }
+    }
+
+    return [DeclSyntax(memberwiseInitDecl)]
   }
 
   static func extractConfiguredAccessLevel(
