@@ -55,26 +55,24 @@ public struct MemberwiseInitMacro: MemberMacro {
     )
 
     if let classDecl = decl.as(ClassDeclSyntax.self),
-       let superclass = classDecl.inheritanceClause?.inheritedTypes.first
+       let superclass = classDecl.inheritanceClause?.inheritedTypes.first,
+       superclass.type.trimmedDescription.hasSuffix("ViewController")
     {
-      let superclassName = superclass.type.trimmedDescription
-      if superclass.type.trimmedDescription.hasSuffix("ViewController") {
-        // the superclass is a viewcontroller, we need to add a call to the designated initializer
-        let superInitStmt: StmtSyntax = "\nsuper.init(nibName: nil, bundle: nil)"
-        memberwiseInitDecl.body?.statements.append(
-          CodeBlockItemSyntax(item: .stmt(superInitStmt))
-        )
+      // the superclass is a viewcontroller, we need to add a call to the designated initializer
+      let superInitStmt: StmtSyntax = "\n    super.init(nibName: nil, bundle: nil)"
+      memberwiseInitDecl.body?.statements.append(
+        CodeBlockItemSyntax(item: .stmt(superInitStmt))
+      )
 
-        // we also need to add the required initializer
-        let requiredInitDecl: DeclSyntax = """
+      // we also need to add the required initializer
+      let requiredInitDecl: DeclSyntax = """
           @available(*, unavailable)
           required init?(coder: NSCoder) {
               fatalError("init(coder:) has not been implemented")
           }
           """
 
-        return [DeclSyntax(memberwiseInitDecl), requiredInitDecl]
-      }
+      return [DeclSyntax(memberwiseInitDecl), requiredInitDecl]
     }
 
     return [DeclSyntax(memberwiseInitDecl)]
@@ -349,9 +347,9 @@ public struct MemberwiseInitMacro: MemberMacro {
   ) -> Bool {
     guard bindingKeyword == .keyword(.var) else { return false }
     return switch initAccessLevel {
-    case .private, .fileprivate, .internal:
+    case .private, .fileprivate, .internal, .package, .public:
       true
-    case .package, .public, .open:
+    case .open:
       false
     }
   }

@@ -201,7 +201,8 @@ private func determineRemoveCustomInitFixIt(
 private func diagnoseAccessibilityLeak(
   customSettings: VariableCustomSettings?,
   variable: VariableDeclSyntax,
-  targetAccessLevel: AccessLevelModifier
+  targetAccessLevel: AccessLevelModifier,
+  allowPublicTargetForInternalVar: Bool = true
 ) -> Diagnostic? {
   let effectiveAccessLevel = customSettings?.accessLevel ?? variable.accessLevel
 
@@ -209,6 +210,12 @@ private func diagnoseAccessibilityLeak(
     targetAccessLevel > effectiveAccessLevel,
     !variable.isFullyInitializedLet
   else { return nil }
+
+  if allowPublicTargetForInternalVar,
+     targetAccessLevel == .public,
+     effectiveAccessLevel == .internal {
+    return nil
+  }
 
   let customAccess = variable.customConfigurationArguments?
     .first?
