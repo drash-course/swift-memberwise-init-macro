@@ -2,11 +2,18 @@ import SwiftSyntax
 
 extension VariableDeclSyntax {
   var customConfigurationAttributes: [AttributeSyntax] {
-    self.attributes
+    let sourceAttributes = self.attributes
       .compactMap { $0.as(AttributeSyntax.self) }
       .filter {
         ["Init", "InitWrapper", "InitRaw"].contains($0.attributeName.trimmedDescription)
       }
+
+    return if sourceAttributes.isEmpty {
+      // If there isn't any of "Init", "InitWrapper", or "InitRaw", we add @Init as the default.
+      [AttributeSyntax(atSign: .atSignToken(), attributeName: IdentifierTypeSyntax(name: "Init"))]
+    } else {
+      sourceAttributes
+    }
   }
 
   var customConfigurationAttribute: AttributeSyntax? {
